@@ -7,6 +7,8 @@ import PrintersCenter from './PrintersCenter.jsx'
 import StatusSelector from './StatusSelector.jsx'
 import SettingsCenter from './SettingsCenter.jsx'
 import SnmpFields from './SnmpFields.jsx'
+import ClientsCenter from './ClientsCenter.jsx'
+import ClientSiteFields from './ClientSiteFields.jsx'
 
 const STORAGE_KEY = 'printwatch_printers'
 const HISTORY_STORAGE_KEY = 'printwatch_history'
@@ -41,7 +43,8 @@ export default function App() {
     return savedSettings ? JSON.parse(savedSettings) : { tonerThreshold: 20, snmpVersion: 'v2c', community: 'public' }
   })
   const [showSettings, setShowSettings] = useState(false)
-  const [form, setForm] = useState({ name: '', sector: '', ip: '', model: '', toner: 100, pages: 0, status: 'online', snmpVersion: 'v2c', community: 'public' })
+  const [showClients, setShowClients] = useState(false)
+  const [form, setForm] = useState({ name: '', sector: '', ip: '', model: '', toner: 100, pages: 0, status: 'online', snmpVersion: 'v2c', community: 'public', clientId: '', siteId: '', serialNumber: '' })
 
   const visiblePrinters = useMemo(() => printerList.filter(printer =>
     (filter === 'all' || printer.status === filter) && `${printer.name} ${printer.sector}`.toLowerCase().includes(search.toLowerCase()),
@@ -111,7 +114,7 @@ export default function App() {
       showToast('Informe um IP no formato 192.168.1.105')
       return
     }
-    const printerData = { name: form.name, model: form.model, sector: form.sector, ip: form.ip, toner: Number(form.toner), pages: Number(form.pages), status: form.status, snmpVersion: form.snmpVersion, community: form.community, updated: 'Agora' }
+    const printerData = { name: form.name, model: form.model, sector: form.sector, ip: form.ip, toner: Number(form.toner), pages: Number(form.pages), status: form.status, snmpVersion: form.snmpVersion, community: form.community, clientId: form.clientId || null, siteId: form.siteId || null, serialNumber: form.serialNumber, updated: 'Agora' }
     const endpoint = editingPrinter ? `${API_URL}/printers/${editingPrinter.id}` : `${API_URL}/printers`
     const response = await fetch(endpoint, { method: editingPrinter ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(printerData) })
     if (!response.ok) {
@@ -124,12 +127,12 @@ export default function App() {
     const historyResponse = await fetch(`${API_URL}/history`)
     if (historyResponse.ok) setHistory(await historyResponse.json())
     showToast(editingPrinter ? 'Impressora atualizada com sucesso' : 'Impressora cadastrada com sucesso')
-    setForm({ name: '', sector: '', ip: '', model: '', toner: 100, pages: 0, status: 'online', snmpVersion: settings.snmpVersion, community: settings.community })
+    setForm({ name: '', sector: '', ip: '', model: '', toner: 100, pages: 0, status: 'online', snmpVersion: settings.snmpVersion, community: settings.community, clientId: '', siteId: '' })
     setEditingPrinter(null)
     setShowForm(false)
   }
-  function openNewPrinterForm() { setEditingPrinter(null); setForm({ name: '', sector: '', ip: '', model: '', toner: 100, pages: 0, status: 'online', snmpVersion: settings.snmpVersion, community: settings.community }); setShowForm(true) }
-  function openEditPrinterForm(printer) { setEditingPrinter(printer); setForm({ name: printer.name, model: printer.model || printer.name, sector: printer.sector, ip: printer.ip, toner: printer.toner ?? 0, pages: printer.pages, status: printer.status, snmpVersion: printer.snmpVersion || settings.snmpVersion, community: printer.community || settings.community }); setShowForm(true) }
+  function openNewPrinterForm() { setEditingPrinter(null); setForm({ name: '', sector: '', ip: '', model: '', toner: 100, pages: 0, status: 'online', snmpVersion: settings.snmpVersion, community: settings.community, clientId: '', siteId: '', serialNumber: '' }); setShowForm(true) }
+  function openEditPrinterForm(printer) { setEditingPrinter(printer); setForm({ name: printer.name, model: printer.model || printer.name, sector: printer.sector, ip: printer.ip, toner: printer.toner ?? 0, pages: printer.pages, status: printer.status, snmpVersion: printer.snmpVersion || settings.snmpVersion, community: printer.community || settings.community, clientId: printer.clientId || '', siteId: printer.siteId || '', serialNumber: printer.serialNumber || '' }); setShowForm(true) }
   async function deletePrinter(printer) {
     if (!window.confirm(`Excluir a impressora "${printer.name}"?`)) return
     const response = await fetch(`${API_URL}/printers/${printer.id}`, { method: 'DELETE' })
@@ -152,10 +155,12 @@ export default function App() {
     {showForm && <div className="modal-backdrop" onMouseDown={() => setShowForm(false)}><section className="modal" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}><div className="modal-header"><div><h2>{editingPrinter ? 'Editar impressora' : 'Cadastrar impressora'}</h2><p>Informe os dados iniciais do equipamento.</p></div><button className="close-modal" onClick={() => setShowForm(false)}>×</button></div><form onSubmit={registerPrinter}><div className="form-grid"><label>Nome de identificação<input name="name" value={form.name} onChange={updateForm} placeholder="Ex.: Impressora da recepção" required /></label><label>Modelo<input name="model" value={form.model} onChange={updateForm} placeholder="Ex.: HP LaserJet Pro M404" required /></label><label>Setor<input name="sector" value={form.sector} onChange={updateForm} placeholder="Ex.: Administrativo" required /></label><label>Endereço IP<input name="ip" value={form.ip} onChange={updateForm} placeholder="Ex.: 192.168.1.105" pattern="^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$" required /></label><label>Nível inicial de toner (%)<input name="toner" type="number" min="0" max="100" value={form.toner} onChange={updateForm} required /></label><label>Contador de páginas<input name="pages" type="number" min="0" value={form.pages} onChange={updateForm} required /></label></div><p className="form-note">A configuração SNMP será adicionada posteriormente.</p><div className="form-actions"><button type="button" className="cancel" onClick={() => setShowForm(false)}>Cancelar</button><button type="submit" className="save">{editingPrinter ? 'Salvar alterações' : 'Cadastrar impressora'}</button></div></form></section></div>}
     {showForm && <StatusSelector value={form.status} onChange={status => setForm(current => ({ ...current, status }))} />}
     {showForm && <SnmpFields version={form.snmpVersion} community={form.community} onChange={(field, value) => setForm(current => ({ ...current, [field]: value }))} />}
+    {showForm && <ClientSiteFields clientId={form.clientId} siteId={form.siteId} serialNumber={form.serialNumber} onChange={(field, value) => setForm(current => ({ ...current, [field]: value }))} />}
     {active === 'Alertas' && <AlertCenter alerts={automaticAlerts} onClose={() => setActive('Visão geral')} />}
     {active === 'Relatórios' && <ReportsCenter printers={printerList} history={history} onClose={() => setActive('Visão geral')} />}
     {active === 'Impressoras' && <PrintersCenter printers={printerList} onClose={() => setActive('Visão geral')} onOpenDetails={setSelectedPrinter} />}
-    {showSettings && <SettingsCenter settings={settings} onSave={saveSettings} onResetDemo={resetDemoData} onClose={() => setShowSettings(false)} />}
+    {showSettings && <SettingsCenter settings={settings} onSave={saveSettings} onResetDemo={resetDemoData} onOpenClients={() => { setShowSettings(false); setShowClients(true) }} onClose={() => setShowSettings(false)} />}
+    {showClients && <ClientsCenter onClose={() => setShowClients(false)} />}
     {selectedPrinter && <PrinterDetails printer={selectedPrinter} onClose={() => setSelectedPrinter(null)} />}
     {toast && <div className="toast">{icons.check} {toast}</div>}
   </div>

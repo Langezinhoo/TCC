@@ -12,6 +12,8 @@ import './status-selector.css'
 import './settings.css'
 import './snmp-fields.css'
 import './reset-demo.css'
+import './clients.css'
+import './client-site-fields.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode><App /></StrictMode>,
