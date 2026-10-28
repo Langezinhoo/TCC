@@ -1,25 +1,11 @@
-const statusLabel = { online: 'Online', warning: 'Atenção', offline: 'Offline' }
-
-export default function PrinterDetails({ printer, onClose }) {
-  const readings = [
-    ['Hoje, 10:32', printer.pages, printer.toner],
-    ['Ontem, 10:30', Math.max(0, printer.pages - 124), printer.toner === null ? null : Math.min(100, printer.toner + 2)],
-    ['12 ago, 10:28', Math.max(0, printer.pages - 261), printer.toner === null ? null : Math.min(100, printer.toner + 5)],
-  ]
-  const events = printer.status === 'warning'
-    ? ['Toner abaixo de 20%', 'Leitura SNMP concluída']
-    : printer.status === 'offline'
-      ? ['Equipamento sem resposta na rede', 'Última leitura registrada']
-      : ['Leitura SNMP concluída', 'Equipamento respondeu normalmente']
-
-  return <div className="details-backdrop" onMouseDown={onClose}>
-    <section className="details-modal" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}>
-      <header className="details-header"><div><p>Detalhes da impressora</p><h2>{printer.name}</h2><span>{printer.sector} · {printer.ip}</span></div><button onClick={onClose} aria-label="Fechar">×</button></header>
-      <div className="details-status"><span className={`details-badge ${printer.status}`}>{statusLabel[printer.status]}</span><small>Última leitura: {printer.updated}</small></div>
-      <div className="details-metrics"><div><small>MODELO</small><strong>{printer.model || printer.name}</strong></div><div><small>CONTADOR ATUAL</small><strong>{printer.pages.toLocaleString('pt-BR')} páginas</strong></div><div><small>NÍVEL DE TONER</small><strong>{printer.toner === null ? 'Indisponível' : `${printer.toner}%`}</strong></div></div>
-      <section className="details-section"><h3>Histórico de leituras</h3><div className="readings"><div className="reading-head"><span>DATA</span><span>CONTADOR</span><span>TONER</span></div>{readings.map(([date, pages, toner]) => <div className="reading-row" key={date}><span>{date}</span><span>{pages.toLocaleString('pt-BR')} páginas</span><span>{toner === null ? 'Indisponível' : `${toner}%`}</span></div>)}</div></section>
-      <section className="details-section"><h3>Ocorrências recentes</h3>{events.map((event, index) => <div className="event-item" key={event}><i className={index === 0 && printer.status !== 'online' ? 'event-alert' : ''} />{event}<small>{index === 0 ? 'Hoje' : 'Última leitura'}</small></div>)}</section>
-      <footer className="details-footer"><button onClick={onClose}>Fechar detalhes</button></footer>
-    </section>
-  </div>
+import { useEffect, useState } from 'react'
+import TonerForecast from './TonerForecast.jsx'
+const labels={open:'Aberto',in_progress:'Em atendimento',resolved:'Resolvido'}
+export default function PrinterDetails({printer,onClose}){
+ const [tickets,setTickets]=useState([]),[events,setEvents]=useState([]),[eventType,setEventType]=useState('Atolamento de papel'),[form,setForm]=useState({title:'',priority:'medium',technician:''})
+ async function load(){const[a,b]=await Promise.all([fetch(`/api/printers/${printer.id}/tickets`),fetch(`/api/printers/${printer.id}/events`)]);if(a.ok)setTickets(await a.json());if(b.ok)setEvents(await b.json())} useEffect(()=>{load()},[printer.id])
+ async function addEvent(e){e.preventDefault();if((await fetch(`/api/printers/${printer.id}/events`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:eventType,severity:'warning'})})).ok)load()}
+ async function addTicket(e){e.preventDefault();if((await fetch(`/api/printers/${printer.id}/tickets`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)})).ok){setForm({title:'',priority:'medium',technician:''});load()}}
+ async function update(t,s){const resolution=s==='resolved'?prompt('Solução aplicada:'):t.resolution;if(s==='resolved'&&!resolution)return;if((await fetch(`/api/tickets/${t.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s,priority:t.priority,technician:t.technician,resolution})})).ok)load()}
+ return <div className="details-backdrop" onMouseDown={onClose}><section className="details-modal" onMouseDown={e=>e.stopPropagation()}><header className="details-header"><div><p>Detalhes da impressora</p><h2>{printer.name}</h2><span>{printer.sector} · {printer.ip}</span></div><button onClick={onClose}>×</button></header><div className="details-metrics"><div><small>MODELO</small><strong>{printer.model}</strong></div><div><small>CONTADOR</small><strong>{printer.pages.toLocaleString('pt-BR')} páginas</strong></div><div><small>NÚMERO DE SÉRIE</small><strong>{printer.serialNumber||'Não informado'}</strong></div></div><TonerForecast printerId={printer.id}/><section className="details-section"><h3>Registrar evento técnico</h3><form className="event-form" onSubmit={addEvent}><select value={eventType} onChange={e=>setEventType(e.target.value)}><option>Atolamento de papel</option><option>Falta de papel</option><option>Erro de impressão</option><option>Manutenção preventiva</option></select><button>Registrar evento</button></form></section><section className="details-section"><h3>Abrir chamado</h3><form className="ticket-form" onSubmit={addTicket}><label>Descrição<input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} required/></label><label>Prioridade<select value={form.priority} onChange={e=>setForm({...form,priority:e.target.value})}><option value="low">Baixa</option><option value="medium">Média</option><option value="high">Alta</option><option value="critical">Crítica</option></select></label><label>Técnico responsável<input value={form.technician} onChange={e=>setForm({...form,technician:e.target.value})}/></label><button>Abrir chamado</button></form></section><section className="details-section"><h3>Chamados</h3>{tickets.map(t=><article className="ticket-card" key={t.id}><div><strong>#{t.id} · {t.title}</strong><p>{labels[t.status]} · {t.technician||'Sem técnico'}</p>{t.resolution&&<small>Solução: {t.resolution}</small>}</div><div>{t.status==='open'&&<button onClick={()=>update(t,'in_progress')}>Atender</button>}{t.status==='in_progress'&&<button onClick={()=>update(t,'resolved')}>Resolver</button>}</div></article>)}</section><section className="details-section"><h3>Eventos técnicos</h3>{events.map(x=><div className="event-item" key={x.id}><i className="event-alert"/>{x.type}<small>{new Date(x.createdAt||x.created_at).toLocaleString('pt-BR')}</small></div>)}</section><footer className="details-footer"><button onClick={onClose}>Fechar</button></footer></section></div>
 }

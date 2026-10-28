@@ -16,6 +16,10 @@ dist-ssr
 server/data/*.db
 server/data/*.db-*
 
+# Arquivos intermediários da revisão do artigo
+PrintWatch Artigo Final.docx
+article-qa/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

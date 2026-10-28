@@ -1,16 +1,6 @@
 # PrintWatch
 
-Sistema web para monitoramento de impressoras em rede, criado como projeto de TCC. Centraliza inventário, status, níveis de toner, alertas e informações operacionais para apoiar manutenção preventiva.
-
-## Funcionalidades atuais
-
-- Cadastro, edição e exclusão de impressoras
-- Cliente, site/unidade e número de série por equipamento
-- Status, contador, toner e parâmetros SNMP
-- Alertas automáticos para toner baixo e impressora offline
-- Histórico de alterações e relatórios por setor
-- Configurações de alertas e SNMP
-- API REST em Express com banco SQLite
+Sistema web de monitoramento de impressoras em rede, desenvolvido como TCC.
 
 ## Tecnologias
 
@@ -18,23 +8,65 @@ Sistema web para monitoramento de impressoras em rede, criado como projeto de TC
 - Node.js e Express
 - SQLite
 
-## Como executar
+## Windows
 
-Em dois terminais, na pasta do projeto:
+Instale o [Node.js LTS](https://nodejs.org/). Abra dois terminais na pasta do projeto.
 
 ```powershell
+npm.cmd install
 npm.cmd run dev:server
 ```
+
+No segundo terminal:
 
 ```powershell
 npm.cmd run dev
 ```
 
-O painel estará no endereço indicado pelo Vite. A API responde em `http://localhost:3001`.
+Abra o endereço exibido pelo Vite, normalmente `http://localhost:5173`.
+
+## Linux
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+nvm install --lts
+nvm use --lts
+npm install
+npm run dev:server
+```
+
+No segundo terminal:
+
+```bash
+npm run dev
+```
+
+## Dados fictícios para demonstração
+
+Por padrão, a API usa a base local real e não cria registros fictícios. Para uma demonstração isolada, inicie a API com:
+
+```powershell
+npm.cmd run dev:server -- --fake
+```
+
+No Linux:
+
+```bash
+npm run dev:server -- --fake
+```
+
+O modo `--fake` usa `server/data/printwatch.fake.db`, separado da base real.
+
+## Funcionalidades
+
+- Inventário de impressoras, clientes, sites e número de série
+- Alertas, eventos e chamados de manutenção
+- Suprimentos, estoque e movimentações
+- Configurações SNMP preparadas para integração futura
 
 ## Próximas etapas
 
-- Eventos técnicos e chamados de manutenção
-- Estoque e reposição de suprimentos
+- Alertas por mensageria
+- Previsão de consumo de toner
+- Mapa de equipamentos com problemas
 - Coleta automática por SNMP
-- Usuários, permissões e relatórios avançados

@@ -14,6 +14,12 @@ import './snmp-fields.css'
 import './reset-demo.css'
 import './clients.css'
 import './client-site-fields.css'
+import './tickets.css'
+import './materials.css'
+import './user-name.css'
+import './materials-button.css'
+import './event-form.css'
+import './forecast.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode><App /></StrictMode>,
